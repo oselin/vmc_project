@@ -2,7 +2,7 @@
 cp -r ../VMC-project ~/catkin_ws/src/
 
 # Copy environment in Gazebo
-cp -r models ~/.gazebo
+cp -r ./models ~/.gazebo
 
 cd ~/catkin_ws && catkin_make
 
