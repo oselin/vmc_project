@@ -84,7 +84,7 @@ def calc_grid_map_config(ox, oy, xy_resolution):
     max_y = round(max(oy) + EXTEND_AREA / 2.0)
     xw = int(round((max_x - min_x) / xy_resolution))
     yw = int(round((max_y - min_y) / xy_resolution))
-    print("The grid map is ", xw, "x", yw, ".")
+    #print("The grid map is ", xw, "x", yw, ".")
     return min_x, min_y, max_x, max_y, xw, yw
 
 

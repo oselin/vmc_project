@@ -16,45 +16,38 @@ rospy.init_node('reader') #initialization of the node
 plt.ion()
 fig, ax = plt.subplots()
 
-ox, oy = [],[]
-sc = ax.scatter(ox,oy)
 plt.axis("equal")
-plt.ylim([-5, 5]) 
-plt.xlim([-5,5])
-plt.grid(True)
+plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
+
 
 
 def get_front(data):
     data   = np.array(data)
     angles = np.array(list(range(-90,90))) * np.pi/180
     dist   = np.concatenate(
-                          (np.flip(data[:90]), data[270:]),
+                          (np.flip(data[:90]), np.flip(data[270:])),
                           axis = 0
                           )
     return dist, angles
 
 def plotter(ranges):
-    dist = np.array(ranges)
+    dist, ang = get_front(ranges)
     dist[dist == inf] = 0.0
-    #print(dist)
-    ang = np.array(list(range(0, 360)))
-    ox = dist * np.cos(np.pi/180*ang)
-    oy = -dist*np.sin(np.pi/180*ang)
+
+    ox = dist * np.cos(ang)
+    oy = dist*np.sin(ang)
     
-    xyreso = 0.02  # x-y grid resolution
+    xyreso = 0.05 # x-y grid resolution
     yawreso = math.radians(3.1)  # yaw angle resolution [rad]
     pmap, minx, maxx, miny, maxy, xyreso = lg.generate_ray_casting_grid_map(ox, oy, xyreso, True)
     xyres = np.array(pmap).shape
-    plt.figure(figsize=(20,8))
-    plt.subplot(122)
     plt.imshow(pmap, cmap = "PiYG_r") 
     plt.clim(-0.4, 1.4)
     plt.gca().set_xticks(np.arange(-.5, xyres[1], 1), minor = True)
     plt.gca().set_yticks(np.arange(-.5, xyres[0], 1), minor = True)
-    plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
-    plt.colorbar()
-    #fig.canvas.draw_idle()
-    plt.show()
+    #plt.colorbar()
+    fig.canvas.draw_idle()
+    #plt.show()
 
 
 def callback(msg):
