@@ -12,10 +12,31 @@ from sensor_msgs.msg import LaserScan  #import of the message from the package
 
 rospy.init_node('reader') #initialization of the node
 
+
+plt.ion()
+fig, ax = plt.subplots()
+
+ox, oy = [],[]
+sc = ax.scatter(ox,oy)
+plt.axis("equal")
+plt.ylim([-5, 5]) 
+plt.xlim([-5,5])
+plt.grid(True)
+
+
+def get_front(data):
+    data   = np.array(data)
+    angles = np.array(list(range(-90,90))) * np.pi/180
+    dist   = np.concatenate(
+                          (np.flip(data[:90]), data[270:]),
+                          axis = 0
+                          )
+    return dist, angles
+
 def plotter(ranges):
     dist = np.array(ranges)
     dist[dist == inf] = 0.0
-    print(dist)
+    #print(dist)
     ang = np.array(list(range(0, 360)))
     ox = dist * np.cos(np.pi/180*ang)
     oy = -dist*np.sin(np.pi/180*ang)
@@ -32,8 +53,8 @@ def plotter(ranges):
     plt.gca().set_yticks(np.arange(-.5, xyres[0], 1), minor = True)
     plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
     plt.colorbar()
+    #fig.canvas.draw_idle()
     plt.show()
-
 
 
 def callback(msg):
@@ -44,5 +65,7 @@ def callback(msg):
 sub = rospy.Subscriber('/scan' , LaserScan , callback)
 
 rate = rospy.Rate(1)
+
+plt.show(block=True)
 while not rospy.is_shutdown():
     rate.sleep()

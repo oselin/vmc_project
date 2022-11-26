@@ -1,5 +1,10 @@
 {
     "python.analysis.extraPaths": [
         "./src"
+    ],
+    "python.autoComplete.extraPaths": [
+        "/m/home/home8/86/oselinp1/unix/catkin_ws/devel/lib/python3/dist-packages",
+        "/u/86/oselinp1/unix/catkin_ws/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
     ]
 }
