@@ -4,6 +4,8 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from math import cos, sin, radians, pi
+import lidar_to_grid_map as lg
+from numpy import inf
 
 
 from sensor_msgs.msg import LaserScan  #import of the message from the package
@@ -12,31 +14,30 @@ rospy.init_node('reader') #initialization of the node
 
 def plotter(ranges):
     dist = np.array(ranges)
-    ang = np.array(list(range(0, 360))) * (np.pi/360)
-    ox = []
-    oy = []
-    #for i in range(360):
-    #    ox.append(np.sin(ang[i]) * dist[i])
-    #    oy.append(np.cos(ang[i]) * dist[i])
-    ox = np.sin(ang) * dist
-    oy = np.cos(ang) * dist
-    #ox = np.array(ox)
-    #oy = np.array(oy)
-    print(ox.size)
-    plt.figure(figsize=(6,10))
-    plt.plot([oy, np.zeros(np.size(oy))], [ox, np.zeros(np.size(oy))], "ro-") # lines from 0,0 to the point
-    #plt.plot([oy[1], 0], [ox[1], 0], "ro-") # lines from 0,0 to the point
-    plt.axis("equal")
-    bottom, top = plt.ylim()  # return the current ylim
-    plt.ylim((top, bottom)) # rescale y axis, to match the grid orientation
-    plt.grid(True)
+    dist[dist == inf] = 0.0
+    print(dist)
+    ang = np.array(list(range(0, 360)))
+    ox = dist * np.cos(np.pi/180*ang)
+    oy = -dist*np.sin(np.pi/180*ang)
+    
+    xyreso = 0.02  # x-y grid resolution
+    yawreso = math.radians(3.1)  # yaw angle resolution [rad]
+    pmap, minx, maxx, miny, maxy, xyreso = lg.generate_ray_casting_grid_map(ox, oy, xyreso, True)
+    xyres = np.array(pmap).shape
+    plt.figure(figsize=(20,8))
+    plt.subplot(122)
+    plt.imshow(pmap, cmap = "PiYG_r") 
+    plt.clim(-0.4, 1.4)
+    plt.gca().set_xticks(np.arange(-.5, xyres[1], 1), minor = True)
+    plt.gca().set_yticks(np.arange(-.5, xyres[0], 1), minor = True)
+    plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
+    plt.colorbar()
     plt.show()
 
 
 
-
 def callback(msg):
-    print(msg.ranges)
+    #print(msg.ranges)
     plotter(msg.ranges)
 
 
