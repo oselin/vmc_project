@@ -12,7 +12,7 @@ rospy.init_node('reader') #initialization of the node
 
 def plotter(ranges):
     dist = np.array(ranges)
-    ang = np.array(list(range(0, 360)))
+    ang = np.array(list(range(0, 360))) * (np.pi/360)
     ox = []
     oy = []
     #for i in range(360):
@@ -25,6 +25,7 @@ def plotter(ranges):
     print(ox.size)
     plt.figure(figsize=(6,10))
     plt.plot([oy, np.zeros(np.size(oy))], [ox, np.zeros(np.size(oy))], "ro-") # lines from 0,0 to the point
+    #plt.plot([oy[1], 0], [ox[1], 0], "ro-") # lines from 0,0 to the point
     plt.axis("equal")
     bottom, top = plt.ylim()  # return the current ylim
     plt.ylim((top, bottom)) # rescale y axis, to match the grid orientation
@@ -35,8 +36,9 @@ def plotter(ranges):
 
 
 def callback(msg):
-    print("The front LiDAR reading is: %f" %msg.ranges[359])
+    print(msg.ranges)
     plotter(msg.ranges)
+
 
 sub = rospy.Subscriber('/scan' , LaserScan , callback)
 
