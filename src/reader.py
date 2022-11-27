@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+from re import M
 import rospy
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,6 +7,8 @@ from numpy import inf
 import os, sys
 from scipy.ndimage.filters import convolve as conv2
 from sensor_msgs.msg import LaserScan  
+from geometry_msgs.msg import Twist
+import time
 
 sys.path.append(".")
 from src.VFH import polar_histogram
@@ -20,6 +23,43 @@ plt.ion()
 fig, ax = plt.subplots()
 plt.axis("equal")
 plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
+
+class myTurtle():
+    def __init__(self):
+        self.prev_dir = np.pi/2
+        self.goal_dir = np.pi/2
+
+        # Sample time for data collection
+        self.sample_time = 0.1
+
+        # PID variables
+        self.previous_error = 0
+        self.error = 0
+        self.delta_error = 0
+        self.integr_error = 0
+
+        # PID coefficients
+        self.Kp = 1.5 #0.67
+        self.Ki = 0.05 #0.0045
+        self.Kd = 0.5# 0.097
+
+        # Initialize the Twist object for publishing velocities
+        self.vel = Twist()
+
+        # Define default initial values for linear and angular velocities
+        self.vel.linear.x = 0
+        self.vel.angular.z = 0
+
+        # Distances for PID
+        self.dr, self.dl = 0, 0
+
+        # Status of the simulation
+        self.is_running = 0
+    
+    def stop(self):
+        self.vel.angular.z = 0
+        self.vel.linear.x = 0
+        self.is_running = 0
 
 
 def dnorm(x, mu, sd):
@@ -84,6 +124,34 @@ def occupancy_map(data, resolution=0.1):
 
     return grid
 
+def cost_function(myhistogram, prev_dir, a, b, c):
+    
+    #ang = np.abs(np.pi/2 - myhistogram*5*np.pi/180)
+    heading = np.abs(myhistogram)
+    change = np.abs(myhistogram*10*np.pi/180 - prev_dir)
+
+    cost = b*heading + c*change
+
+    #cost = b*heading
+    return np.argmin(cost)*10*np.pi/180
+
+def PID_controller(robot):
+
+    robot.error = robot.goal_dir - np.pi/2
+    robot.delta_error = robot.error - robot.previous_error
+    robot.integr_error += robot.error
+    
+    P = robot.Kp*robot.error
+    I = robot.Ki*robot.integr_error*robot.sample_time
+    D = robot.Kd*robot.delta_error/robot.sample_time
+    
+    robot.previous_error = robot.error
+
+    gas = P+I+D
+    print("gas: ", gas)
+
+    robot.vel.angular.z = gas
+
 
 
 def plotter(ranges):
@@ -100,19 +168,31 @@ def plotter(ranges):
     g = gaussian_kernel(5,0.5)
     occmpa_uncert = conv2(occmap,g,mode ="reflect")
 
-    myhistgram = polar_histogram(dist, occmpa_uncert)    
+    myhistgram = polar_histogram(dist, occmpa_uncert, active_region=10)    
 
-    os.system("clear")
-    print(myhistgram)
+    thr_up = 20
+    thr_down = 0.1
+    myhistgram[myhistgram > thr_up] = 40
+    myhistgram[myhistgram < thr_down] = 40
+    
+    turtle.goal_dir = cost_function(myhistgram,turtle.prev_dir,1,1,2)
+
+    PID_controller(turtle)
+    pub.publish(turtle.vel)
+    print(turtle.goal_dir*180/np.pi)
+    turtle.prev_dir = turtle.goal_dir
+    #plt.bar(np.arange(18),myhistgram)
+    #time.sleep(100)
+    #os.system("clear")
+    #print(myhistgram)
     """ax.clear()
     ax.bar(np.arange(36),myhistgram)
     ax.set_xlim(0,36)
     ax.set_ylim(0,100)
     ax.autoscale(False)"""
-    #plt.clf()
-    plt.bar(np.arange(36),myhistgram)
+    #plt.bar(np.arange(36),myhistgram)
     #plt.imshow(occmpa_uncert,cmap = "PiYG_r")
-    plt.show()
+    #plt.show()
     
     #fig.canvas.flush_events()
 
@@ -124,10 +204,14 @@ def callback(msg):
 
 
 sub = rospy.Subscriber('/scan' , LaserScan , callback)
-rate = rospy.Rate(100)
+pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
 
+rate = rospy.Rate(10)
 
-plt.show(block=True)
+turtle = myTurtle()
+turtle.vel.linear.x = 0
+
+#plt.show(block=True)
 
 while not rospy.is_shutdown():
     rate.sleep()
