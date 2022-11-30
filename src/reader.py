@@ -13,6 +13,8 @@ import signal
 
 sys.path.append(".")
 from src.VFH import polar_histogram
+import src.utils
+from src.utils import strong_avoid
 
 
 #initialization of the node
@@ -25,6 +27,8 @@ myhistogram = []
 myhistogram2 = []
 occmpa_uncert = []
 
+ACTIVE_REGION = 9
+
 def moving_average(x, w):
     bfr = []
 
@@ -36,8 +40,11 @@ def moving_average(x, w):
         bfr.append(window_average)
 
         i += 1 
-    bfr = np.concatenate(([700,700,700], bfr, [700,700,700]), axis=0)
-
+    bfr = np.concatenate(([bfr[i] for i in range(int(w/2)-1,-1,-1)], 
+                           bfr, 
+                           [bfr[-i] for i in range(1,int(w/2)+1)]), 
+                        axis=0)
+    
     return bfr
 
 
@@ -145,10 +152,8 @@ def occupancy_map(data, resolution=0.1):
 
 def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     
-    bfr = 1
-    
     global myhistogram2
-    #while bfr:
+
     myhistogram2 = moving_average(myhistogram,6)     
 
     heading = np.abs(myhistogram2)
@@ -158,8 +163,9 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     goal_direction = np.argmin(myhistogram2)*10
     goal_direction_rad = goal_direction*np.pi/180
 
+    long_vel = np.amin([0.3,np.mean(myhistogram2)/10])
     
-    return goal_direction_rad
+    return goal_direction_rad, long_vel
 
 def PID_controller(robot):
 
@@ -174,8 +180,7 @@ def PID_controller(robot):
     robot.previous_error = robot.error
 
     gas = P+I+D
-    #print("gas: ", gas)
-
+ 
     robot.vel.angular.z = gas
 
 
@@ -188,20 +193,21 @@ def plotter(ranges):
     ox = dist*np.cos(ang)
     oy = dist*np.sin(ang)
    
-    occmap = occupancy_map([ox,oy])
+    occmap_tmp = occupancy_map([ox,oy])
+    occmap = strong_avoid(occmap_tmp,5)
 
     #g, _,_,_,_,_ = gaussian2(0.5)
-    g = gaussian_kernel(5,1)
+    g = gaussian_kernel(5,0.5)
     occmpa_uncert = conv2(occmap,g,mode ="reflect")
 
-    myhistogram = polar_histogram(dist, occmpa_uncert, active_region=10)    
+    myhistogram = polar_histogram(dist, occmpa_uncert, active_region=ACTIVE_REGION)    
 
     thr_up = 20
     thr_down = 0.1
     #myhistgram[myhistgram > thr_up] = 40
     #myhistgram[myhistgram < thr_down] = 40
     
-    turtle.goal_dir = cost_function(myhistogram,turtle.prev_dir, dist, 1,1,2)
+    turtle.goal_dir,turtle.vel.linear.x = cost_function(myhistogram,turtle.prev_dir, dist, 1,1,2)
 
     PID_controller(turtle)
     if not PAUSE: 
@@ -210,24 +216,11 @@ def plotter(ranges):
         print(turtle.goal_dir*180/np.pi)
     turtle.prev_dir = turtle.goal_dir
 
-    #os.system("clear")
-    #print(myhistgram)
-    """ax.clear()
-    ax.bar(np.arange(36),myhistgram)
-    ax.set_xlim(0,36)
-    ax.set_ylim(0,100)
-    ax.autoscale(False)"""
-    #plt.imshow(occmpa_uncert,cmap = "PiYG_r")
-    
-    
-    #fig.canvas.flush_events()
 
 
 
 def callback(msg):
-    #print(msg.ranges)
     plotter(msg.ranges)
-
 
 sub = rospy.Subscriber('/scan' , LaserScan , callback)
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
@@ -243,7 +236,7 @@ TIME = time.time()
 def handler(signum, frame):
     global PAUSE, TIME
     if time.time() - TIME < 1:
-        print("CHIDUO")
+        print("CLOSING")
         exit(1)
     
     if not PAUSE:
@@ -254,14 +247,18 @@ def handler(signum, frame):
 
         pub.publish(turtle.vel)
 
-        fig, ax = plt.subplots()
+        for i in [myhistogram, myhistogram2]:
+            pass
+
+        fig, ax = plt.subplots(1,3, clear=True, figsize=(14, 4))
         plt.axis("equal")
         plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
 
-        #plt.imshow(occmpa_uncert,cmap = "PiYG_r")
-        print(myhistogram2.shape)
-        plt.bar(np.arange(18)*10,myhistogram)
-        plt.bar(np.arange(18)*10+2,myhistogram2)
+        ax[0].imshow(occmpa_uncert,cmap = "PiYG_r")
+        ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
+        ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION+2,myhistogram2)
+        ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
+        ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram2)
         plt.show()
     else:
         turtle.vel.linear.x = 0.1
@@ -269,6 +266,7 @@ def handler(signum, frame):
         pub.publish(turtle.vel)
 
 
+# Enable the debug tool by pressing CTRL+C
 signal.signal(signal.SIGINT, handler)
 
 
