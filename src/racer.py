@@ -1,145 +1,142 @@
 #! /usr/bin/env python3
+from BurgerRobot import BurgerRobot
 import rospy
-from sensor_msgs.msg import LaserScan
+import numpy as np
+import matplotlib.pyplot as plt
+from numpy import inf
+from scipy.ndimage.filters import convolve as conv2
+from sensor_msgs.msg import LaserScan  
 from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
-import os
-import math
 
 
-# Class for colored stdout on terminal
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+import time
+import signal
+
+import os, sys
+sys.path.append(".")
+from src.VFH import polar_histogram
+from src.utils import gaussian2, strong_avoid,\
+                         moving_average, get_front, PID_controller, occupancy_map
 
 
-class myTurtle():
-    def __init__(self):
+#initialization of the node
+rospy.init_node('reader') 
 
-        # Sample time for data collection
-        self.sample_time = 0.1
 
-        # PID variables
-        self.previous_error = 0
-        self.error = 0
-        self.delta_error = 0
-        self.integr_error = 0
 
-        # PID coefficients
-        self.Kp = 1.5 #0.67
-        self.Ki = 0.05 #0.0045
-        self.Kd = 0.5# 0.097
 
-        # Initialize the Twist object for publishing velocities
-        self.vel = Twist()
+myhistogram   = []
+myhistogram2  = []
+occmpa_uncert = []
 
-        # Define default initial values for linear and angular velocities
-        self.vel.linear.x = 0
-        self.vel.angular.z = 0
+PAUSE         = 0
+TIME          = time.time()
+ACTIVE_REGION = 9
 
-        # Distances for PID
-        self.dr, self.dl = 0, 0
+vehicle = BurgerRobot()
 
-        # Status of the simulation
-        self.is_running = 0
+
+def handler(signum, frame):
+    """
+    Event handler for debugging the code
+    """
+    global PAUSE, TIME
+    if time.time() - TIME < 1:
+        print("CLOSING")
+        exit(1)
     
-    def stop(self):
-        self.vel.angular.z = 0
-        self.vel.linear.x = 0
-        self.is_running = 0
-    
+    if not PAUSE:
+        vehicle.vel.linear.x = 0
+        vehicle.vel.angular.z = 0
+        PAUSE = 1
+        TIME = time.time()
 
-    def PID_controller(self):
-        
-        if self.is_running:
-            if not self.dl == float("inf")  and not self.dr == float("inf"):        
-                
-                self.error = self.dl - self.dr
-                self.delta_error = self.error - self.previous_error
-                self.integr_error += self.error
-                
-                P = self.Kp*self.error
-                I = self.Ki*self.integr_error*self.sample_time
-                D = self.Kd*self.delta_error/self.sample_time
-                
-                self.previous_error = self.error
+        pub.publish(vehicle.vel)
 
-                gas = P+I+D
-                
-            # if the vehicle is so rotated to see infinity
-            elif self.dl == float("inf")  and not self.dr == float("inf"): 
-                gas = 1
-            elif not self.dl == float("inf")  and self.dr == float("inf"): 
-                gas = -1
-            else:
-                self.stop()
-                gas = 0
+        for i in [myhistogram, myhistogram2]:
+            pass
 
-            self.vel.angular.z = gas
-            print_data(self)
+        fig, ax = plt.subplots(1,3, clear=True, figsize=(14, 4))
+        plt.axis("equal")
+        plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
 
-
-def print_data(vehicle: myTurtle):
-    os.system('clear')
-
-    print("Vehicle information:")
-    print(vehicle.vel)
-    print(".............................")
-    print("RIGHT:", vehicle.dr)
-    print("LEFT :", vehicle.dl)
-    print(".............................")
-    if vehicle.error == 0:
-        print("ERROR:", vehicle.error)
+        ax[0].imshow(occmpa_uncert,cmap = "PiYG_r")
+        ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
+        ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION+2,myhistogram2)
+        ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
+        ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram2)
+        plt.show()
     else:
-        if vehicle.vel.angular.z/vehicle.error > 0:
-            print(f"{bcolors.WARNING}ERROR: {vehicle.error}{bcolors.ENDC}")
-        else:
-            print("ERROR:", vehicle.error)
-    print("DERIV:",vehicle.delta_error)
-    print("INTEG:",vehicle.integr_error)
+        PAUSE = 0
+
+
+def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
+    """
+    Cost function that will choose the best direction
+    """
+    global myhistogram2
+
+    myhistogram2 = moving_average(myhistogram,6)     
+
+    """heading = np.abs(myhistogram2)
+    change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
+    cost = b*heading + c*change"""
+
+    goal_direction = np.argmin(myhistogram2)*10
+    goal_direction_rad = goal_direction*np.pi/180
+
+    long_vel = np.amin([0.3,np.mean(myhistogram2)/10])
     
-
-# Read data from input and generate a steering command
-def callback(msg, turtle):
-    turtle.dr, turtle.dl = msg.ranges[295], msg.ranges[65]
-    turtle.PID_controller()
+    return goal_direction_rad, long_vel
 
 
-def main():
+def plotter(ranges):
+    global myhistogram, occmpa_uncert
 
-    # Initialize the myTurtle object. It will be the "digital twin" of the turtle robot
-    turtle = myTurtle()
+    # Filter the data and take only the one within [0, 180]
+    dist, ang = get_front(ranges)
 
-    # Initialize the node as publisher and subscriber
-    rospy.init_node('PIDcontroller')
-    
-    # Initialize Subscriber and Publisher
-    sub = rospy.Subscriber('/scan', LaserScan, callback,(turtle))
-    pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
+    # Rescale data to consider only the closest
+    dist = 3*dist
+    dist[dist == inf] = 100
 
-    
-
-    # Define the update rate for collecting data from sensors and update steering inputs
-    rate = rospy.Rate(1/turtle.sample_time)
-
-    print_data(turtle)
-
-    turtle.is_running = 1
-    turtle.vel.linear.x = 0.3
-    
-    while not rospy.is_shutdown():
-
-        pub.publish(turtle.vel)
-        if not turtle.is_running: exit()
-        rate.sleep()
+    ox = dist*np.cos(ang)
+    oy = dist*np.sin(ang)
+   
+    occmap = occupancy_map([ox,oy])
+    g = gaussian2(0.5, 5)
 
 
-if __name__ == '__main__':
-    main()
+    occmpa_uncert = conv2(occmap,g,mode ="reflect")
+    myhistogram = polar_histogram(dist, occmpa_uncert, active_region=ACTIVE_REGION)    
+   
+    vehicle.goal_dir,vehicle.vel.linear.x = cost_function(myhistogram,vehicle.prev_dir, dist, 1,1,2)
+
+    PID_controller(vehicle)
+
+    if not PAUSE: 
+        pub.publish(vehicle.vel)
+        os.system("clear")
+        print(vehicle.goal_dir*180/np.pi)
+    vehicle.prev_dir = vehicle.goal_dir
+
+
+
+
+def callback(msg):
+    plotter(msg.ranges)
+
+sub = rospy.Subscriber('/scan' , LaserScan , callback)
+pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
+
+rate = rospy.Rate(10)
+
+
+
+
+# Enable the debug tool by pressing CTRL+C
+signal.signal(signal.SIGINT, handler)
+
+
+while not rospy.is_shutdown():
+    rate.sleep()
