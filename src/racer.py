@@ -32,7 +32,6 @@ occmpa_uncert = []
 PAUSE         = 0
 TIME          = time.time()
 ACTIVE_REGION = 9
-
 vehicle = BurgerRobot()
 
 
@@ -75,14 +74,14 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     Cost function that will choose the best direction
     """
     global myhistogram2
-
+    #myhistogram[myhistogram < 0.5] = 10
     myhistogram2 = moving_average(myhistogram,6)     
 
     """heading = np.abs(myhistogram2)
     change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
     cost = b*heading + c*change"""
 
-    goal_direction = np.argmin(myhistogram2)*10
+    goal_direction = np.argmin(myhistogram2)*ACTIVE_REGION
     goal_direction_rad = goal_direction*np.pi/180
 
     long_vel = np.amin([0.3,np.mean(myhistogram2)/10])
@@ -97,17 +96,24 @@ def plotter(ranges):
     dist, ang = get_front(ranges)
 
     # Rescale data to consider only the closest
-    dist = 3*dist
-    dist[dist == inf] = 100
+    dist = 4*dist
+    idx = dist == float("inf")
+    for i,j in  enumerate(idx):
+        if i == 0 or i == len(idx) - 1: dist[i] = 0.120
+        else: 
+            if j: dist[i] = np.amin([dist[i-1], dist[i+1]])
+    #dist[dist == inf] = 100
 
+    # Get Cartesian coordinates
     ox = dist*np.cos(ang)
     oy = dist*np.sin(ang)
-   
-    occmap = occupancy_map([ox,oy])
-    g = gaussian2(0.5, 5)
+    
+    # Create occupancy map and Gaussian filter
+    occmap, g = strong_avoid(occupancy_map([ox,oy]),1), gaussian2(0.5, 5)
 
-
+    # Apply uncertainty
     occmpa_uncert = conv2(occmap,g,mode ="reflect")
+
     myhistogram = polar_histogram(dist, occmpa_uncert, active_region=ACTIVE_REGION)    
    
     vehicle.goal_dir,vehicle.vel.linear.x = cost_function(myhistogram,vehicle.prev_dir, dist, 1,1,2)
@@ -115,9 +121,13 @@ def plotter(ranges):
     PID_controller(vehicle)
 
     if not PAUSE: 
+        #vehicle.vel.linear.x = 0
+        #vehicle.vel.angular.z = 0
+
         pub.publish(vehicle.vel)
         os.system("clear")
         print(vehicle.goal_dir*180/np.pi)
+        print(np.argmin(myhistogram))
     vehicle.prev_dir = vehicle.goal_dir
 
 
