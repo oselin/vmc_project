@@ -21,14 +21,12 @@ rospy.init_node('reader')
 
 
 
-
-PRINT = 0
-myhistogram = 0
-myhistogram2 = 0
+myhistogram = []
+myhistogram2 = []
+occmpa_uncert = []
 
 def moving_average(x, w):
     bfr = []
-  
 
     i = 0
     while i < len(x) - w :
@@ -38,15 +36,12 @@ def moving_average(x, w):
         bfr.append(window_average)
 
         i += 1 
-    bfr = np.concatenate(([40,40], bfr, [40,40]), axis=0)
+    bfr = np.concatenate(([700,700,700], bfr, [700,700,700]), axis=0)
 
     return bfr
 
-## Plot Settings
-#plt.ion()
-fig, ax = plt.subplots()
-plt.axis("equal")
-plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
+
+
 
 class myTurtle():
     def __init__(self):
@@ -154,8 +149,7 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     
     global myhistogram2
     #while bfr:
-    myhistogram2 = moving_average(myhistogram,4) 
-    
+    myhistogram2 = moving_average(myhistogram,6)     
 
     heading = np.abs(myhistogram2)
     change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
@@ -164,21 +158,6 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     goal_direction = np.argmin(myhistogram2)*10
     goal_direction_rad = goal_direction*np.pi/180
 
-    
-    # Check reliability of the choise
-    #LIDAR[LIDAR*np.cos(np.arange(180))]
-    """if goal_direction < 90:
-        dst = LIDAR[20]
-    else:
-        dst = LIDAR[160]
-
-    #print(f"Distance analyzed {LIDAR[goal_direction]*np.cos(goal_direction_rad)}")
-    if np.abs(LIDAR[goal_direction]*np.cos(goal_direction_rad)) < dst:
-        bfr = 0
-    else:
-        #print(f"Direction {goal_direction} discarded")
-        myhistogram[np.argmin(cost)] = 100 # set to an high value to not be chosen in the future
-    """
     
     return goal_direction_rad
 
@@ -201,7 +180,7 @@ def PID_controller(robot):
 
 
 def plotter(ranges):
-    global myhistogram
+    global myhistogram, occmpa_uncert
     dist, ang = get_front(ranges)
     dist = 4*dist
     dist[dist == inf] = 100
@@ -212,7 +191,7 @@ def plotter(ranges):
     occmap = occupancy_map([ox,oy])
 
     #g, _,_,_,_,_ = gaussian2(0.5)
-    g = gaussian_kernel(5,0.5)
+    g = gaussian_kernel(5,1)
     occmpa_uncert = conv2(occmap,g,mode ="reflect")
 
     myhistogram = polar_histogram(dist, occmpa_uncert, active_region=10)    
@@ -230,10 +209,7 @@ def plotter(ranges):
         os.system("clear")
         print(turtle.goal_dir*180/np.pi)
     turtle.prev_dir = turtle.goal_dir
-    if PRINT:
-        plt.bar(np.arange(18),myhistogram)
-        time.sleep(100)
-        plt.show()
+
     #os.system("clear")
     #print(myhistgram)
     """ax.clear()
@@ -259,7 +235,7 @@ pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
 rate = rospy.Rate(10)
 
 turtle = myTurtle()
-turtle.vel.linear.x = 0.1
+turtle.vel.linear.x = 0.05
 
 PAUSE = 0
 TIME = time.time()
@@ -275,7 +251,14 @@ def handler(signum, frame):
         turtle.vel.angular.z = 0
         PAUSE = 1
         TIME = time.time()
+
         pub.publish(turtle.vel)
+
+        fig, ax = plt.subplots()
+        plt.axis("equal")
+        plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
+
+        #plt.imshow(occmpa_uncert,cmap = "PiYG_r")
         print(myhistogram2.shape)
         plt.bar(np.arange(18)*10,myhistogram)
         plt.bar(np.arange(18)*10+2,myhistogram2)
@@ -287,8 +270,7 @@ def handler(signum, frame):
 
 
 signal.signal(signal.SIGINT, handler)
-if PRINT:
-    plt.show(block=True)
+
 
 while not rospy.is_shutdown():
     rate.sleep()
