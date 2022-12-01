@@ -12,10 +12,11 @@ def label_data(data: np.array):
 
 def strong_avoid(occ_map,r):
     strong_occ_map = np.zeros(occ_map.shape)
-    for i in range(r,occ_map.shape[0]-r):
-        for j in range(r,occ_map.shape[1]-r):
+    for i in range(r-1,occ_map.shape[0]-r-1):
+        for j in range(r-1,occ_map.shape[1]-r):
             if occ_map[i,j] == 1:
                 for a in range(-r,r):
                     for b in range(-r,r):
-                        strong_occ_map[i+a,j+b] = 1  
+                        #if ((i+a<=occ_map.shape[0]) and (j+b<=occ_map.shape[1]) and (i+a>=0) and (j+b>=0)):
+                        strong_occ_map[i+a,j+b] = 0.7  
     return strong_occ_map

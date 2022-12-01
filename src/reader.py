@@ -44,9 +44,18 @@ def moving_average(x, w):
                            bfr, 
                            [bfr[-i] for i in range(1,int(w/2)+1)]), 
                         axis=0)
-    
+    #print("moving avg :", bfr)
     return bfr
 
+def exp_moving_average(x,alpha):
+    
+    tmp = x[0:1]
+    tmp = tmp[::-1]
+    ema = np.concatenate((tmp,x))
+    ema[0] = ema[0]*alpha
+    for i in range(1,len(ema)):
+        ema[i-1] = alpha*ema[i] + (1-alpha)*ema[i-1]
+    return ema
 
 
 
@@ -66,7 +75,7 @@ class myTurtle():
 
         # PID coefficients
         self.Kp = 1.5 #0.67
-        self.Ki = 0.05 #0.0045
+        self.Ki = 0.0 #0.0045
         self.Kd = 0.5# 0.097
 
         # Initialize the Twist object for publishing velocities
@@ -154,8 +163,9 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     
     global myhistogram2
 
+    #print("myhistogram: ",myhistogram)
     myhistogram2 = moving_average(myhistogram,6)     
-
+    #myhistogram2 = exp_moving_average(myhistogram,0.2)
     heading = np.abs(myhistogram2)
     change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
     cost = b*heading + c*change
@@ -180,7 +190,6 @@ def PID_controller(robot):
     robot.previous_error = robot.error
 
     gas = P+I+D
- 
     robot.vel.angular.z = gas
 
 
@@ -192,9 +201,9 @@ def plotter(ranges):
 
     ox = dist*np.cos(ang)
     oy = dist*np.sin(ang)
-   
+    #occmap = occupancy_map([ox,oy])
     occmap_tmp = occupancy_map([ox,oy])
-    occmap = strong_avoid(occmap_tmp,5)
+    occmap = strong_avoid(occmap_tmp,2)
 
     #g, _,_,_,_,_ = gaussian2(0.5)
     g = gaussian_kernel(5,0.5)
@@ -203,11 +212,11 @@ def plotter(ranges):
     myhistogram = polar_histogram(dist, occmpa_uncert, active_region=ACTIVE_REGION)    
 
     thr_up = 20
-    thr_down = 0.1
+    thr_down = 0.2
     #myhistgram[myhistgram > thr_up] = 40
-    #myhistgram[myhistgram < thr_down] = 40
+    #myhistogram[myhistogram < thr_down] = 40
     
-    turtle.goal_dir,turtle.vel.linear.x = cost_function(myhistogram,turtle.prev_dir, dist, 1,1,2)
+    turtle.goal_dir,turtle.vel.linear.x = cost_function(myhistogram,turtle.prev_dir, dist, 1,1,2)  
 
     PID_controller(turtle)
     if not PAUSE: 
