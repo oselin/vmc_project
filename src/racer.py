@@ -15,7 +15,7 @@ import signal
 import os, sys
 sys.path.append(".")
 from src.VFH import polar_histogram
-from src.utils import gaussian2, strong_avoid,exp_moving_average, \
+from src.utils import gaussian2, strong_avoid,exp_moving_average, gaussian_kernel, \
                          moving_average, get_front, PID_controller, occupancy_map
 
 
@@ -73,21 +73,22 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     """
     global myhistogram2
     #myhistogram[myhistogram < 0.5] = 10
-    myhistogram2 = moving_average(myhistogram,4)     
-
+    myhistogram2 = moving_average(myhistogram,6)     
+    
     """heading = np.abs(myhistogram2)
     change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
     cost = b*heading + c*change"""
 
-    #myhistogram2[0] = np.max(myhistogram2)
-    #myhistogram2[-1] = np.max(myhistogram2)
+    
 
-    goal_direction = np.argmin(myhistogram2)*10
+    goal_direction = np.argmin(myhistogram2)*ACTIVE_REGION
     goal_direction_rad = goal_direction*np.pi/180
 
-    long_vel = np.amin([0.3,np.mean(myhistogram2)/10])
+    long_vel = np.amin([0.3,(LIDAR[90])/10])
+    #np.mean(myhistogram2)/15])
     
     return goal_direction_rad, long_vel
+
 
 
 def plotter(ranges):
@@ -96,27 +97,33 @@ def plotter(ranges):
     # Filter the data and take only the one within [0, 180]
     dist, ang = get_front(ranges)
 
+    if np.sum(dist == float("inf")) == len(dist):
+        vehicle.stop()
+        pub.publish(vehicle.vel)
+        exit(1)
     # Rescale data to consider only the closest
     dist = 4*dist
 
-    """idx = dist == float("inf")
+    idx = dist == float("inf")
     for i,j in  enumerate(idx):
         if i == 0 or i == len(idx) - 1: dist[i] = 0.120
         else: 
-            if j: dist[i] = np.amin([dist[i-1], dist[i+1]])"""
-    dist[dist == inf] = 100
+            if j: dist[i] = np.amin([dist[i-1], dist[i+1]])
+
+    #dist[dist == inf] = 100
 
     # Get Cartesian coordinates
     ox = dist*np.cos(ang)
     oy = dist*np.sin(ang)
     
     # Create occupancy map and Gaussian filter
-    occmap, g = occupancy_map([ox,oy]), gaussian2(0.5, 5)
+    occmap = occupancy_map([ox,oy])
+    g =  gaussian_kernel(5, 0.5)
 
     # Apply uncertainty
-    occmpa_uncert = conv2(occmap,g,mode ="reflect")
+    occmap= conv2(occmap,g,mode ="reflect")
 
-    myhistogram = polar_histogram(dist, occmpa_uncert, active_region=ACTIVE_REGION)    
+    myhistogram = polar_histogram(dist, occmap, active_region=ACTIVE_REGION)    
    
     vehicle.goal_dir,vehicle.vel.linear.x = cost_function(myhistogram,vehicle.prev_dir, dist, 1,1,2)
 

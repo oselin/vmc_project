@@ -35,9 +35,10 @@ def moving_average(x, w):
         bfr.append(window_average)
 
         i += 1 
-    bfr = np.concatenate(([bfr[i] for i in range(int(w/2)-1,-1,-1)], 
-                           bfr, 
-                           [bfr[-i] for i in range(1,int(w/2)+1)]), 
+    bfr = np.concatenate((
+                        [bfr[i] for i in range(int(w/2)-1,-1,-1)], 
+                        bfr, 
+                        [bfr[-i] for i in range(1,int(w/2)+1)]), 
                         axis=0)
     
     return bfr
@@ -116,3 +117,20 @@ def PID_controller(robot: BurgerRobot):
  
     robot.vel.angular.z = gas
 
+
+def dnorm(x, mu, sd):
+    return 1 / (np.sqrt(2 * np.pi) * sd) * np.e ** (-np.power((x - mu) / sd, 2) / 2)
+
+
+def gaussian_kernel(size, sigma=1, verbose=False):
+    kernel_1D = np.linspace(-(size // 2), size // 2, size)
+    for i in range(size):
+        kernel_1D[i] = dnorm(kernel_1D[i], 0, sigma)
+    kernel_2D = np.outer(kernel_1D.T, kernel_1D.T)
+    kernel_2D *= 1.0 / kernel_2D.max()
+ 
+    if verbose:
+        plt.imshow(kernel_2D, interpolation='none',cmap='gray')
+        plt.title("Image")
+        plt.show()
+    return kernel_2D

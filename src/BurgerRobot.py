@@ -16,9 +16,9 @@ class BurgerRobot():
         self.integr_error = 0
 
         # PID coefficients
-        self.Kp = 1.5 #0.67
-        self.Ki = 0.05 #0.0045
-        self.Kd = 0.5# 0.097
+        self.Kp = 1.2 #0.67
+        self.Ki = 0.0#0.0045
+        self.Kd = 0.56# 0.097
 
         # Initialize the Twist object for publishing velocities
         self.vel = Twist()
