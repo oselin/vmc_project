@@ -38,5 +38,3 @@ def polar_histogram(LIDAR_readings, CARTESIAN_readings, angle_range=180, active_
             angle = np.arctan2(robot_pos[0]-i, j - robot_pos[1])
             histogram[int(np.floor(angle/active_region))] += magnitudes[i,j]
     return histogram
-
-
