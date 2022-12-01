@@ -1,6 +1,8 @@
 import imp
 import numpy as np
 from BurgerRobot import BurgerRobot
+
+
 def label_data(data: np.array):
     text = ""
 

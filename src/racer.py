@@ -31,7 +31,7 @@ occmpa_uncert = []
 
 PAUSE         = 0
 TIME          = time.time()
-ACTIVE_REGION = 9
+ACTIVE_REGION = 10
 vehicle = BurgerRobot()
 
 
@@ -52,8 +52,6 @@ def handler(signum, frame):
 
         pub.publish(vehicle.vel)
 
-        for i in [myhistogram, myhistogram2]:
-            pass
 
         fig, ax = plt.subplots(1,3, clear=True, figsize=(14, 4))
         plt.axis("equal")
@@ -81,7 +79,10 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
     cost = b*heading + c*change"""
 
-    goal_direction = np.argmin(myhistogram2)*ACTIVE_REGION
+    #myhistogram2[0] = np.max(myhistogram2)
+    #myhistogram2[-1] = np.max(myhistogram2)
+
+    goal_direction = np.argmin(myhistogram2)*10
     goal_direction_rad = goal_direction*np.pi/180
 
     long_vel = np.amin([0.3,np.mean(myhistogram2)/10])
@@ -97,19 +98,20 @@ def plotter(ranges):
 
     # Rescale data to consider only the closest
     dist = 4*dist
-    idx = dist == float("inf")
+
+    """idx = dist == float("inf")
     for i,j in  enumerate(idx):
         if i == 0 or i == len(idx) - 1: dist[i] = 0.120
         else: 
-            if j: dist[i] = np.amin([dist[i-1], dist[i+1]])
-    #dist[dist == inf] = 100
+            if j: dist[i] = np.amin([dist[i-1], dist[i+1]])"""
+    dist[dist == inf] = 100
 
     # Get Cartesian coordinates
     ox = dist*np.cos(ang)
     oy = dist*np.sin(ang)
     
     # Create occupancy map and Gaussian filter
-    occmap, g = strong_avoid(occupancy_map([ox,oy]),1), gaussian2(0.5, 5)
+    occmap, g = occupancy_map([ox,oy]), gaussian2(0.5, 5)
 
     # Apply uncertainty
     occmpa_uncert = conv2(occmap,g,mode ="reflect")
