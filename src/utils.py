@@ -42,6 +42,16 @@ def moving_average(x, w):
     
     return bfr
 
+def exp_moving_average(x,alpha):
+    
+    tmp = x[0:1]
+    tmp = tmp[::-1]
+    ema = np.concatenate((tmp,x))
+    ema[0] = ema[0]*alpha
+    for i in range(1,len(ema)):
+        ema[i-1] = alpha*ema[i] + (1-alpha)*ema[i-1]
+    return ema
+
 
 def gaussian2(sigma, N=None):
 
@@ -90,7 +100,7 @@ def occupancy_map(data, resolution=0.1):
 
     return grid
 
-def PID_controller(robot):
+def PID_controller(robot: BurgerRobot):
 
     robot.error = robot.goal_dir - np.pi/2
     robot.delta_error = robot.error - robot.previous_error

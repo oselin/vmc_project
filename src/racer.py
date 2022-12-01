@@ -15,7 +15,7 @@ import signal
 import os, sys
 sys.path.append(".")
 from src.VFH import polar_histogram
-from src.utils import gaussian2, strong_avoid,\
+from src.utils import gaussian2, strong_avoid,exp_moving_average, \
                          moving_average, get_front, PID_controller, occupancy_map
 
 
@@ -31,7 +31,7 @@ occmpa_uncert = []
 
 PAUSE         = 0
 TIME          = time.time()
-ACTIVE_REGION = 10
+ACTIVE_REGION = 9
 vehicle = BurgerRobot()
 
 
@@ -73,7 +73,7 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
     """
     global myhistogram2
     #myhistogram[myhistogram < 0.5] = 10
-    myhistogram2 = moving_average(myhistogram,6)     
+    myhistogram2 = moving_average(myhistogram,4)     
 
     """heading = np.abs(myhistogram2)
     change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
