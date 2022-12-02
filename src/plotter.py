@@ -13,20 +13,10 @@ import time
 data = np.arange(20)
 
 def callback(msg):
-    global data
+    global data, hp
     data = msg.values
-    
+    hp = msg.heatmap
 
-    #ax[0].imshow(occmap,cmap = "PiYG_r")
-    
-    #ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION+2,myhistogram2)
-    #ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
-    #ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram2)
-    #plt.show()
-    """for rec,h in zip(tab2, msg.values):
-        rec.height(h)"""
-
-    #rate.sleep()
 
 
 
@@ -41,6 +31,8 @@ rospy.Subscriber('/data', numpy_msg(Floats), callback)
 
 
 def animate(frameno):
+    occmap = hp.reshape(70,70)
+    ax[0].imshow(occmap,cmap = "PiYG_r")
 
     ax[1].cla()
     ax[1].set_xlim(0,200)

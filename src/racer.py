@@ -23,6 +23,7 @@ from utils import gaussian2, strong_avoid,exp_moving_average, gaussian_kernel, \
 myhistogram   = []
 myhistogram2  = []
 occmap = []
+plt_msg = Floats()
 
 PAUSE         = 0
 TIME          = time.time()
@@ -101,7 +102,7 @@ def plotter(ranges):
     
     # Create occupancy map and Gaussian filter
     occmap = occupancy_map([ox,oy])
-    g =  gaussian2(5, 0.5)
+    g =  gaussian_kernel(5, 0.5)
 
     # Apply uncertainty
     occmap= conv2(occmap,g,mode ="reflect")
@@ -113,7 +114,9 @@ def plotter(ranges):
     
     PID_controller(vehicle)
     
-    datapub.publish(myhistogram2.astype('float32'))
+    #plt_msg.values = myhistogram2.astype('float32')
+    #plt_msg.heatmap = occmap.flatten().astype('float32')
+    #datapub.publish(plt_msg)
     if not PAUSE: 
         #vehicle.vel.linear.x = 0
         #vehicle.vel.angular.z = 0
@@ -140,7 +143,7 @@ def main():
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
     datapub = rospy.Publisher('/data', numpy_msg(Floats) , queue_size=1)
 
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(100)
 
     # Enable the debug tool by pressing CTRL+C
     signal.signal(signal.SIGINT, handler)

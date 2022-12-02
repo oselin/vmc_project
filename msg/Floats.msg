@@ -1,2 +1,2 @@
 float32[] values
-float32MultiArray[] heatmap
+float32[] heatmap
