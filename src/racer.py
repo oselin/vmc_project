@@ -14,16 +14,10 @@ import time
 import signal
 
 import os, sys
-sys.path.append(".")
-from src.VFH import polar_histogram
-from src.utils import gaussian2, strong_avoid,exp_moving_average, gaussian_kernel, \
+
+from VFH import polar_histogram
+from utils import gaussian2, strong_avoid,exp_moving_average, gaussian_kernel, \
                          moving_average, get_front, PID_controller, occupancy_map
-
-
-#initialization of the node
-rospy.init_node('racer') 
-
-
 
 
 myhistogram   = []
@@ -146,18 +140,24 @@ def plotter(ranges):
 def callback(msg):
     plotter(msg.ranges)
 
-sub = rospy.Subscriber('/scan' , LaserScan , callback)
-pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
-datapub = rospy.Publisher('/data', numpy_msg(Floats) , queue_size=1)
 
-rate = rospy.Rate(10)
+def main():
+    global sub, pub, datapub
+    
+    #initialization of the node
+    rospy.init_node('racer') 
+    sub = rospy.Subscriber('/scan' , LaserScan , callback)
+    pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
+    datapub = rospy.Publisher('/data', numpy_msg(Floats) , queue_size=1)
+
+    rate = rospy.Rate(10)
+
+    # Enable the debug tool by pressing CTRL+C
+    signal.signal(signal.SIGINT, handler)
 
 
+    while not rospy.is_shutdown():
+        rate.sleep()
 
-
-# Enable the debug tool by pressing CTRL+C
-signal.signal(signal.SIGINT, handler)
-
-
-while not rospy.is_shutdown():
-    rate.sleep()
+if __name__ == '__main__':
+    main()
