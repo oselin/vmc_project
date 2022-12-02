@@ -7,7 +7,7 @@ from numpy import inf
 from scipy.ndimage.filters import convolve as conv2
 from sensor_msgs.msg import LaserScan  
 from geometry_msgs.msg import Twist
-
+from rospy.numpy_msg import numpy_msg
 
 import time
 import signal
@@ -27,7 +27,7 @@ rospy.init_node('reader')
 
 myhistogram   = []
 myhistogram2  = []
-occmpa_uncert = []
+occmap = []
 
 PAUSE         = 0
 TIME          = time.time()
@@ -57,7 +57,7 @@ def handler(signum, frame):
         plt.axis("equal")
         plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
 
-        ax[0].imshow(occmpa_uncert,cmap = "PiYG_r")
+        ax[0].imshow(occmap,cmap = "PiYG_r")
         ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
         ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION+2,myhistogram2)
         ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
@@ -92,7 +92,7 @@ def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
 
 
 def plotter(ranges):
-    global myhistogram, occmpa_uncert
+    global myhistogram, occmap
 
     # Filter the data and take only the one within [0, 180]
     dist, ang = get_front(ranges)
@@ -118,7 +118,7 @@ def plotter(ranges):
     
     # Create occupancy map and Gaussian filter
     occmap = occupancy_map([ox,oy])
-    g =  gaussian_kernel(5, 0.5)
+    g =  gaussian2(5, 0.5)
 
     # Apply uncertainty
     occmap= conv2(occmap,g,mode ="reflect")
@@ -134,7 +134,7 @@ def plotter(ranges):
         #vehicle.vel.angular.z = 0
 
         pub.publish(vehicle.vel)
-        os.system("clear")
+        #os.system("clear")
         print(vehicle.goal_dir*180/np.pi)
         print(np.argmin(myhistogram))
     vehicle.prev_dir = vehicle.goal_dir
@@ -147,6 +147,7 @@ def callback(msg):
 
 sub = rospy.Subscriber('/scan' , LaserScan , callback)
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
+#datapub = rospy.Publisher('/data', numpy_msg(Floats) , queue_size=1)
 
 rate = rospy.Rate(10)
 
