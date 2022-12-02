@@ -8,6 +8,7 @@ from scipy.ndimage.filters import convolve as conv2
 from sensor_msgs.msg import LaserScan  
 from geometry_msgs.msg import Twist
 from rospy.numpy_msg import numpy_msg
+from vmc_project.msg import Floats
 
 import time
 import signal
@@ -20,7 +21,7 @@ from src.utils import gaussian2, strong_avoid,exp_moving_average, gaussian_kerne
 
 
 #initialization of the node
-rospy.init_node('reader') 
+rospy.init_node('racer') 
 
 
 
@@ -128,13 +129,13 @@ def plotter(ranges):
     vehicle.goal_dir,vehicle.vel.linear.x = cost_function(myhistogram,vehicle.prev_dir, dist, 1,1,2)
 
     PID_controller(vehicle)
-
+    datapub.publish(myhistogram)
     if not PAUSE: 
         #vehicle.vel.linear.x = 0
         #vehicle.vel.angular.z = 0
 
         pub.publish(vehicle.vel)
-        #os.system("clear")
+        os.system("clear")
         print(vehicle.goal_dir*180/np.pi)
         print(np.argmin(myhistogram))
     vehicle.prev_dir = vehicle.goal_dir
@@ -147,7 +148,7 @@ def callback(msg):
 
 sub = rospy.Subscriber('/scan' , LaserScan , callback)
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
-#datapub = rospy.Publisher('/data', numpy_msg(Floats) , queue_size=1)
+datapub = rospy.Publisher('/data', numpy_msg(Floats) , queue_size=1)
 
 rate = rospy.Rate(10)
 
