@@ -10,6 +10,8 @@ from rospy.numpy_msg import numpy_msg
 from vmc_project.msg import Floats
 import time
 
+data = np.arange(20)
+
 def callback(msg):
     global data
     data = msg.values
@@ -39,16 +41,16 @@ rospy.Subscriber('/data', numpy_msg(Floats), callback)
 
 
 def animate(frameno):
-    axes.cla()
-    axes.set_xlim(0,200)
-    axes.set_ylim(0,200)   
-    axes.bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION+2,data)
 
-    time.sleep(0.1)
+    ax[1].cla()
+    ax[1].set_xlim(0,200)
+    ax[1].set_ylim(0,200)   
+    ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION+2,data)
 
-fig = plt.figure(figsize=(7,5))
-axes = fig.add_subplot(1,1,1)
 
+fig, ax = plt.subplots(3, clear=True, figsize=(4, 14))
+plt.axis("equal")
+plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
 
 
 ani = FuncAnimation(fig, animate, interval=100)

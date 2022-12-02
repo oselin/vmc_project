@@ -46,18 +46,6 @@ def handler(signum, frame):
         TIME = time.time()
 
         pub.publish(vehicle.vel)
-
-
-        fig, ax = plt.subplots(1,3, clear=True, figsize=(14, 4))
-        plt.axis("equal")
-        plt.grid(True, which="minor", color="w", linewidth = .6, alpha = 0.5)
-
-        ax[0].imshow(occmap,cmap = "PiYG_r")
-        ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
-        ax[1].bar(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION+2,myhistogram2)
-        ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram)
-        ax[2].plot(np.arange(180/ACTIVE_REGION)*ACTIVE_REGION,myhistogram2)
-        plt.show()
     else:
         PAUSE = 0
 
