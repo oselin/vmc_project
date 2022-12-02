@@ -122,8 +122,10 @@ def plotter(ranges):
    
     vehicle.goal_dir,vehicle.vel.linear.x = cost_function(myhistogram,vehicle.prev_dir, dist, 1,1,2)
 
+    
     PID_controller(vehicle)
-    datapub.publish(myhistogram)
+    
+    datapub.publish(myhistogram2.astype('float32'))
     if not PAUSE: 
         #vehicle.vel.linear.x = 0
         #vehicle.vel.angular.z = 0
