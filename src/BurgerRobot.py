@@ -3,7 +3,7 @@ import numpy as np
 
 class BurgerRobot():
     def __init__(self):
-        self.prev_dir = np.pi/2
+
         self.goal_dir = np.pi/2
 
         # Sample time for data collection
@@ -27,13 +27,7 @@ class BurgerRobot():
         self.vel.linear.x = 0
         self.vel.angular.z = 0
 
-        # Distances for PID
-        self.dr, self.dl = 0, 0
-
-        # Status of the simulation
-        self.is_running = 0
     
     def stop(self):
         self.vel.angular.z = 0
         self.vel.linear.x = 0
-        self.is_running = 0

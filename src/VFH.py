@@ -25,14 +25,22 @@ def magnitude_matrix(LIDAR_readings, confidence_matrix):
 
 def polar_histogram(LIDAR_readings, CARTESIAN_readings, angle_range=180, active_region=5):
 
+    # Convert angle range in radians
     angle_range = angle_range/180*np.pi
+
+    # Convert active region in radians
     active_region = active_region/180*np.pi
 
+    # Estimate the magnitude matrix
     magnitudes = magnitude_matrix(LIDAR_readings,CARTESIAN_readings)
 
+    # Initialization of the histogram array
     histogram = np.zeros([int(np.floor(angle_range/active_region))])
+
+    # Definition of the robot position in the magnitude matrix
     robot_pos = [magnitudes.shape[0],magnitudes.shape[1]/2]
 
+    # Filling the histogram array
     for i in range(magnitudes.shape[0]):
         for j in range(magnitudes.shape[1]):
             angle = np.arctan2(robot_pos[0]-i, j - robot_pos[1])

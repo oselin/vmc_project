@@ -2,8 +2,6 @@
 from BurgerRobot import BurgerRobot
 import rospy
 import numpy as np
-import matplotlib.pyplot as plt
-from numpy import inf
 from scipy.ndimage.filters import convolve as conv2
 from sensor_msgs.msg import LaserScan  
 from geometry_msgs.msg import Twist
@@ -13,16 +11,14 @@ from vmc_project.msg import Floats
 import time
 import signal
 
-import os, sys
+import os
 
 from VFH import polar_histogram
-from utils import gaussian2, strong_avoid,exp_moving_average, gaussian_kernel, \
-                         moving_average, get_front, PID_controller, occupancy_map
+from utils import gaussian_kernel, \
+    moving_average, get_front, PID_controller, occupancy_map
 
 
-myhistogram   = []
-myhistogram2  = []
-occmap = []
+myhistogram, myhistogram2, occmap = [], [], []
 plt_msg = Floats()
 
 PAUSE         = 0
@@ -51,25 +47,17 @@ def handler(signum, frame):
         PAUSE = 0
 
 
-def cost_function(myhistogram, prev_dir, LIDAR, a, b, c):
+def cost_function(myhistogram,LIDAR):
     """
     Cost function that will choose the best direction
     """
     global myhistogram2
-    #myhistogram[myhistogram < 0.5] = 10
     myhistogram2 = moving_average(myhistogram,6)     
-    
-    """heading = np.abs(myhistogram2)
-    change = np.abs(myhistogram2*10*np.pi/180 - prev_dir)
-    cost = b*heading + c*change"""
-
-    
 
     goal_direction = np.argmin(myhistogram2)*ACTIVE_REGION
     goal_direction_rad = goal_direction*np.pi/180
 
     long_vel = np.amin([0.3,(LIDAR[90])/10])
-    #np.mean(myhistogram2)/15])
     
     return goal_direction_rad, long_vel
 
@@ -85,6 +73,7 @@ def plotter(ranges):
         vehicle.stop()
         pub.publish(vehicle.vel)
         exit(1)
+
     # Rescale data to consider only the closest
     dist = 4*dist
 
@@ -93,8 +82,6 @@ def plotter(ranges):
         if i == 0 or i == len(idx) - 1: dist[i] = 0.120
         else: 
             if j: dist[i] = np.amin([dist[i-1], dist[i+1]])
-
-    #dist[dist == inf] = 100
 
     # Get Cartesian coordinates
     ox = dist*np.cos(ang)
@@ -107,20 +94,16 @@ def plotter(ranges):
     # Apply uncertainty
     occmap= conv2(occmap,g,mode ="reflect")
 
+    # Calculate Vector Field Histograms
     myhistogram = polar_histogram(dist, occmap, active_region=ACTIVE_REGION)    
-   
-    vehicle.goal_dir,vehicle.vel.linear.x = cost_function(myhistogram,vehicle.prev_dir, dist, 1,1,2)
-
     
+    # Estimate direction and desired velocities
+    vehicle.goal_dir,vehicle.vel.linear.x = cost_function(myhistogram,dist)
+    
+    # Apply PID control
     PID_controller(vehicle)
     
-    #plt_msg.values = myhistogram2.astype('float32')
-    #plt_msg.heatmap = occmap.flatten().astype('float32')
-    #datapub.publish(plt_msg)
     if not PAUSE: 
-        #vehicle.vel.linear.x = 0
-        #vehicle.vel.angular.z = 0
-
         pub.publish(vehicle.vel)
         os.system("clear")
         print(vehicle.goal_dir*180/np.pi)
