@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/m/home/home8/86/oselinp1/unix/catkin_ws/devel/include/**",
+        "/u/86/oselinp1/unix/catkin_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/u/86/oselinp1/unix/catkin_ws/src/exercise4/include/**",
+        "/u/86/oselinp1/unix/catkin_ws/src/graph_rviz_plugin/include/**",
+        "/u/86/oselinp1/unix/catkin_ws/src/turtlebot3_simulations/turtlebot3_fake/include/**",
+        "/u/86/oselinp1/unix/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
