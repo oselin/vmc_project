@@ -4,7 +4,7 @@ Simple simulation of a turtle bot moving within a maze. Algorithm developed usin
 
 Inspired by the paper __A Constrained VFH Algorithm for Motion Planning of Autonomous Vehicles__
 
-<p style="align:center">
+<p align="center">
 <img src="./media/sim.gif"/>
 </p>
 
