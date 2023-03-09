@@ -1,4 +1,4 @@
-# Vector Field Histogram algorightm implementation
+# Vector Field Histogram algorithm implementation
 
 Simple simulation of a turtle bot moving within a maze. Algorithm developed using ROS2 and Python3
 
