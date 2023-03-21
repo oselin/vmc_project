@@ -54,14 +54,14 @@ rosrun vmc_project plotter2.py
 
 ## Difference between Plotter and Plotter2
 The designed node publishes two types of data
-1 - velocity commands to the robot
-2 - manipulated data, or VF histograms + occupancy map
+1) velocity commands to the robot
+2) manipulated data, or VF histograms + occupancy map
 
 Since the latter is a very big message (almost 5000 float32 values), to increase the perfomances the following workaround has been designed.
 
-`plotter.py` builds the graphs basing on the complex and heavy message
+`plotter.py`: builds the graphs basing on the complex and heavy message
 
-`plotter2.py` reads LiDAR values directly from the `/scan ` topic and performes the same data manipulation steps as racer.py, to avoid a useless publishing on a custom topic
+`plotter2.py`: reads LiDAR values directly from `/scan ` topic and performs the same data manipulation steps as in racer.py. That is to avoid a useless publishing on a custom topic
 
 
 ## Known issues in the software
@@ -72,7 +72,7 @@ This slows down all the computations, leading to a failure of the algorithm. __W
 rosbag record /scan
 ```
 
-And then simulating data publishing, but this time running only the plotter. Therefore
+And then simulate data publishing, but this time running only the plotter. Therefore
 ```bash
 rosbag play <your-recording>
 ```
